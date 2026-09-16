@@ -1,0 +1,326 @@
+;===============================================================================
+; PROGRAMME PRINCIPAL : MASTERMIND
+;===============================================================================
+
+    ORG $3000
+    
+;=== INITIALISATION DE L'INTERFACE GRAPHIQUE ===
+    
+    ; Agrandir la fenetre a 900x700 pixels
+    MOVE.L #$038402BC,D1        ; Format: Largeur(900) x Hauteur(700)
+    JSR RESOLUTION
+    
+    ; Dessiner le fond vert fonce
+    MOVE.L #$00006400,D1        ; Couleur: Vert fonce (RGB)
+    JSR SET_FILL_COLOR          ; Definir couleur de remplissage
+    
+    MOVE.W #0,D1                ; X1 = 0 (coin haut gauche)
+    MOVE.W #0,D2                ; Y1 = 0
+    MOVE.W #900,D3              ; X2 = 900 (coin bas droit)
+    MOVE.W #1000,D4             ; Y2 = 1000
+    JSR DRAW_FILL_RECT          ; Dessiner rectangle plein
+    
+    ; Afficher le titre "MASTERMIND" en jaune
+    MOVE.L #$00FFFF00,D1        ; Couleur: Jaune (RGB)
+    JSR SET_PEN_COLOR           ; Definir couleur du texte
+    MOVE.L #TITRE,A1            ; Adresse du texte a afficher
+    MOVE.W #250,D1              ; Position X du texte
+    MOVE.W #10,D2               ; Position Y du texte
+    JSR DRAW_STRING             ; Afficher le texte
+    
+    ; Ajouter de l'espace au debut (sauts de ligne)
+    MOVE.L #ESPACE_DEBUT,A0
+    JSR LECTURE
+    
+    ; Afficher le message du code secret masque
+    MOVE.L #MSG_CODE_SECRET_MASQUE,A0
+    JSR LECTURE
+    
+    ; Initialiser les pointeurs pour les marqueurs
+    MOVE.L #PLACE_SECRET,A3     ; Marqueurs pour le code secret
+    MOVE.L #PLACE_CHOISI,A2     ; Marqueurs pour le code choisi
+    
+    ; Initialiser le compteur de manches a 0
+    MOVE.B #0,D3
+    
+    ; Generer le code secret aleatoire
+    JSR INIT_CODE
+
+;=== BOUCLE PRINCIPALE DU JEU ===
+    
+MANCHE:                         ; Debut d'une manche
+    
+    ; Reinitialiser les marqueurs
+    JSR INIT_MARKERS
+    
+    ; Lire le choix du joueur (5 chiffres)
+    JSR OVERFLOW
+    
+    ; Comparer le choix avec le code secret
+    JSR COMP
+    
+    ; Verifier si le joueur a gagne (5 bien places)
+    CMP.B #5,D7
+    BEQ FIN_JEU
+    
+    ; Preparer l'affichage des resultats
+    ; Convertir nombre de mal places en ASCII
+    MOVE.B D4,D0
+    ADD.B #$30,D0
+    MOVE.B D0,MAL_P
+    
+    ; Convertir nombre de bien places en ASCII
+    MOVE.B D7,D0
+    ADD.B #$30,D0
+    MOVE.B D0,BIEN_P
+    
+    ; Afficher les resultats
+    MOVE.L #MSG_INFO1,A0
+    JSR LECTURE
+    MOVE.L #BIEN_P,A0
+    JSR LECTURE
+    MOVE.L #MSG_INFO2,A0
+    JSR LECTURE
+    MOVE.L #MAL_P,A0
+    JSR LECTURE
+    
+    ; Incrementer le compteur de manches
+    ADD.B #1,D3
+    
+    ; Verifier si 10 tentatives sont epuisees
+    CMP.B #11,D3
+    BEQ FIN_JEU
+    
+    ; Continuer avec une nouvelle manche
+    BRA MANCHE
+
+;=== FIN DU JEU ===
+    
+FIN_JEU:
+    ; Verifier si victoire ou defaite
+    CMP.B #5,D7
+    BNE DEFAITE
+    
+    ; Cas victoire
+    MOVE.L #MSG_VICTOIRE,A0
+    JSR LECTURE
+    BRA FIN
+    
+DEFAITE:
+    ; Cas defaite
+    MOVE.L #MSG_DEFAITE,A0
+    JSR LECTURE
+    
+    ; Afficher le code secret
+    MOVE.L #MSG_AFF_CODE,A0
+    JSR LECTURE
+    MOVE.L #CODE_SECRET,A0
+    JSR LECTURE
+    
+FIN:
+    ; Terminer le programme
+    JMP FINPRG
+
+;===============================================================================
+; ROUTINES POUR LA GESTION DU JEU
+;===============================================================================
+
+;--- Initialiser le code secret aleatoire ---
+INIT_CODE:
+    JSR TIMER_SEED              ; Initialiser la graine avec l'horloge
+    MOVE.L #CODE_SECRET,A4      ; Adresse du code secret
+    MOVE.B #0,D2                ; Compteur de chiffres
+   
+RAND_LOOP:
+    JSR INIT_RANDOM_SEED        ; Generer un chiffre aleatoire (0-9)
+    ADD.B #$30,D0               ; Convertir en ASCII ('0'-'9')
+    MOVE.B D0,0(A4,D2)          ; Stocker dans CODE_SECRET
+    ADD.B #1,D2                 ; Incrementer compteur
+    CMP.B #5,D2                 ; 5 chiffres generes?
+    BNE RAND_LOOP
+    MOVE.B #0,0(A4,D2)          ; Terminer avec 0
+    RTS
+
+;--- Generateur de nombres aleatoires ---
+INIT_RANDOM_SEED:
+    MOVE.L SEED,D0              ; Charger la graine
+    MULU #17,D0                 ; Multiplier par 17
+    ADD.B #3,D0                 ; Ajouter 3
+    DIVU #10,D0                 ; Diviser par 10
+    SWAP D0                     ; Le reste est dans les 16 bits hauts
+    AND.L #$00FF,D0             ; Garder seulement 8 bits (0-9)
+    MOVE.L D0,SEED              ; Sauvegarder nouvelle graine
+    RTS
+
+;--- Initialiser la graine avec l'horloge systeme ---
+TIMER_SEED:
+    JSR GET_TIME                ; Recuperer le temps systeme
+    MOVE.L D1,SEED              ; Utiliser comme graine
+    RTS
+
+;--- Saisie du choix du joueur avec validation ---
+OVERFLOW:
+    MOVE.B #0,D6                ; Compteur de chiffres saisis
+    MOVE.L #STARTMSG,A0         ; Message de demande
+    JSR LECTURE
+    MOVE.L #CHOIX,A1            ; Adresse ou stocker le choix
+    
+SAISIE:
+    JSR SAISCAR                 ; Lire un caractere
+    CMP.B #$0D,D1               ; Entree pressee?
+    BEQ FIN_SAISIE
+    CMP.B #$30,D1               ; Caractere < '0'?
+    BLT SAISIE
+    CMP.B #$39,D1               ; Caractere > '9'?
+    BGT SAISIE
+    CMP.B #5,D6                 ; Deja 5 chiffres?
+    BGT SAISIE
+    MOVE.B D1,(A1)+             ; Stocker le chiffre
+    ADD.B #1,D6                 ; Incrementer compteur
+    BRA SAISIE
+    
+FIN_SAISIE:
+    CMP.B #5,D6                 ; Exactement 5 chiffres?
+    BNE OVERFLOW                ; Sinon redemander
+    MOVE.B #0,(A1)              ; Terminer avec 0
+    RTS
+
+;--- Comparer le choix avec le code secret ---
+COMP:
+    JSR BIEN_PLACE              ; Compter les chiffres bien places
+    JSR MAL_PLACE               ; Compter les chiffres mal places
+    RTS
+
+;--- Reinitialiser les marqueurs ---
+INIT_MARKERS:
+    MOVE.L #PLACE_SECRET,A3
+    MOVE.L #PLACE_CHOISI,A2
+    MOVE.B #0,D1                ; Compteur
+    
+MARKER_LOOP:
+    MOVE.B #0,(A3)+             ; Mettre marqueur a 0
+    MOVE.B #0,(A2)+             ; Mettre marqueur a 0
+    ADD.B #1,D1
+    CMP.B #5,D1                 ; 5 positions?
+    BNE MARKER_LOOP
+    RTS
+
+;--- Compter les chiffres bien places ---
+; Resultat dans D7
+BIEN_PLACE:
+    MOVE.L #CHOIX,A1
+    MOVE.L #CODE_SECRET,A4
+    MOVE.L #PLACE_SECRET,A3
+    MOVE.L #PLACE_CHOISI,A2
+    MOVE.B #0,D7                ; Compteur de bien places
+    MOVE.B #0,D5                ; Index de position
+    MOVE.B #0,D1
+    MOVE.B #0,D0
+
+BOUCLE_BIEN_PLACE:
+    MOVE.B 0(A1,D5),D0          ; Chiffre du choix
+    MOVE.B 0(A4,D5),D1          ; Chiffre du code secret
+    CMP.B D0,D1                 ; Sont-ils egaux?
+    BNE SKIP
+    
+    ; Chiffre bien place trouve
+    MOVE.B #1,0(A3,D5)          ; Marquer dans PLACE_SECRET
+    MOVE.B #1,0(A2,D5)          ; Marquer dans PLACE_CHOISI
+    ADD.B #1,D7                 ; Incrementer compteur
+   
+SKIP:
+    ADD.B #1,D5                 ; Position suivante
+    CMP.B #5,D5                 ; Toutes les positions?
+    BNE BOUCLE_BIEN_PLACE
+    RTS
+
+;--- Compter les chiffres mal places ---
+; Resultat dans D4
+MAL_PLACE:
+    MOVE.L #CHOIX,A1
+    MOVE.L #CODE_SECRET,A4
+    MOVE.L #PLACE_SECRET,A3
+    MOVE.L #PLACE_CHOISI,A2
+    MOVE.B #0,D2                ; Index choix
+    MOVE.B #0,D4                ; Compteur de mal places
+
+FIRST_LOOP:
+    MOVE.B #0,D5                ; Index code secret
+    CMP.B #0,0(A2,D2)           ; Deja marque?
+    BNE END_FIRST_LOOP          ; Oui, passer au suivant
+    
+SECOND_LOOP:
+    CMP.B #0,0(A3,D5)           ; Position deja utilisee?
+    BNE END_SECOND_LOOP
+    
+    MOVE.B 0(A1,D2),D0          ; Chiffre du choix
+    MOVE.B 0(A4,D5),D1          ; Chiffre du code secret
+    CMP.B D0,D1                 ; Sont-ils egaux?
+    BNE END_SECOND_LOOP
+    
+    ; Chiffre mal place trouve
+    ADD.B #1,D4                 ; Incrementer compteur
+    MOVE.B #1,0(A3,D5)          ; Marquer
+    MOVE.B #1,0(A2,D2)          ; Marquer
+    BRA END_FIRST_LOOP
+    
+END_SECOND_LOOP:
+    ADD.B #1,D5
+    CMP.B #5,D5
+    BNE SECOND_LOOP
+    
+END_FIRST_LOOP:
+    ADD.B #1,D2
+    CMP.B #5,D2
+    BNE FIRST_LOOP
+    RTS
+
+;===============================================================================
+; INCLUSION DES BIBLIOTHEQUES
+;===============================================================================
+    
+    INCLUDE 'BIBLIO.X68'        ; Entrees/sorties textuelles
+    INCLUDE 'BIBPERIPH.X68'     ; Gestion fenetre
+    INCLUDE 'BIBGRAPH.X68'      ; Fonctions graphiques
+
+;===============================================================================
+; DECLARATIONS DES VARIABLES
+;===============================================================================
+    
+CHOIX: DS.B 6                   ; Choix du joueur (5 chiffres + 0)
+
+ESPACE_DEBUT: DC.B $0A,$0D,$0A,$0D,$0A,$0D,0  ; Sauts de ligne
+
+STARTMSG: DC.B '=== Veuillez choisir une composition de 5 chiffres === :',$0A,$0D,'>',0
+
+SEED: DC.L $46753289            ; Graine pour generateur aleatoire
+
+CODE_SECRET: DS.B 6             ; Code secret (5 chiffres + 0)
+
+PLACE_SECRET: DC.B 0,0,0,0,0    ; Marqueurs pour code secret
+
+PLACE_CHOISI: DC.B 0,0,0,0,0    ; Marqueurs pour code choisi
+
+MAL_P: DC.B 0,$0D,$0A,0         ; Stockage nombre mal places (ASCII)
+
+BIEN_P: DC.B 0,0                ; Stockage nombre bien places (ASCII)
+
+MSG_INFO1: DC.B 'ELEMENTS BIEN PLACES ',0 
+
+MSG_INFO2: DC.B ' ,ELEMENTS JUSTES MAIS MAL PLACES ',0
+
+MSG_VICTOIRE: DC.B 'BRAVO TU AS TROUVE LE CODE SECRET !! :)',0
+
+MSG_DEFAITE: DC.B 'TU AS PERDU HAHAHAHA',0
+
+MSG_AFF_CODE: DC.B 'LE CODE SECRET EST ',0
+
+TITRE: DC.B 'M A S T E R M I N D',0
+
+MSG_CODE_SECRET_MASQUE: DC.B 'Code secret : [ ? ][ ? ][ ? ][ ? ][ ? ]',$0A,$0D,$0A,$0D,0
+
+    END $3000
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~

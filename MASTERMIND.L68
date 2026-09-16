@@ -1,0 +1,523 @@
+00003000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 14/09/2026 14:26:31
+
+00000000                             1  ;===============================================================================
+00000000                             2  ; PROGRAMME PRINCIPAL : MASTERMIND
+00000000                             3  ;===============================================================================
+00000000                             4  
+00003000                             5      ORG $3000
+00003000                             6      
+00003000                             7  ;=== INITIALISATION DE L'INTERFACE GRAPHIQUE ===
+00003000                             8      
+00003000                             9      ; Agrandir la fenetre a 900x700 pixels
+00003000  223C 038402BC             10      MOVE.L #$038402BC,D1        ; Format: Largeur(900) x Hauteur(700)
+00003006  4EB9 00003308             11      JSR RESOLUTION
+0000300C                            12      
+0000300C                            13      ; Dessiner le fond vert fonce
+0000300C  223C 00006400             14      MOVE.L #$00006400,D1        ; Couleur: Vert fonce (RGB)
+00003012  4EB9 00003320             15      JSR SET_FILL_COLOR          ; Definir couleur de remplissage
+00003018                            16      
+00003018  323C 0000                 17      MOVE.W #0,D1                ; X1 = 0 (coin haut gauche)
+0000301C  343C 0000                 18      MOVE.W #0,D2                ; Y1 = 0
+00003020  363C 0384                 19      MOVE.W #900,D3              ; X2 = 900 (coin bas droit)
+00003024  383C 03E8                 20      MOVE.W #1000,D4             ; Y2 = 1000
+00003028  4EB9 00003350             21      JSR DRAW_FILL_RECT          ; Dessiner rectangle plein
+0000302E                            22      
+0000302E                            23      ; Afficher le titre "MASTERMIND" en jaune
+0000302E  223C 00FFFF00             24      MOVE.L #$00FFFF00,D1        ; Couleur: Jaune (RGB)
+00003034  4EB9 00003318             25      JSR SET_PEN_COLOR           ; Definir couleur du texte
+0000303A  227C 0000345E             26      MOVE.L #TITRE,A1            ; Adresse du texte a afficher
+00003040  323C 00FA                 27      MOVE.W #250,D1              ; Position X du texte
+00003044  343C 000A                 28      MOVE.W #10,D2               ; Position Y du texte
+00003048  4EB9 00003368             29      JSR DRAW_STRING             ; Afficher le texte
+0000304E                            30      
+0000304E                            31      ; Ajouter de l'espace au debut (sauts de ligne)
+0000304E  207C 00003376             32      MOVE.L #ESPACE_DEBUT,A0
+00003054  4EB9 000032D6             33      JSR LECTURE
+0000305A                            34      
+0000305A                            35      ; Afficher le message du code secret masque
+0000305A  207C 00003472             36      MOVE.L #MSG_CODE_SECRET_MASQUE,A0
+00003060  4EB9 000032D6             37      JSR LECTURE
+00003066                            38      
+00003066                            39      ; Initialiser les pointeurs pour les marqueurs
+00003066  267C 000033C4             40      MOVE.L #PLACE_SECRET,A3     ; Marqueurs pour le code secret
+0000306C  247C 000033C9             41      MOVE.L #PLACE_CHOISI,A2     ; Marqueurs pour le code choisi
+00003072                            42      
+00003072                            43      ; Initialiser le compteur de manches a 0
+00003072  163C 0000                 44      MOVE.B #0,D3
+00003076                            45      
+00003076                            46      ; Generer le code secret aleatoire
+00003076  4EB9 0000312C             47      JSR INIT_CODE
+0000307C                            48  
+0000307C                            49  ;=== BOUCLE PRINCIPALE DU JEU ===
+0000307C                            50      
+0000307C                            51  MANCHE:                         ; Debut d'une manche
+0000307C                            52      
+0000307C                            53      ; Reinitialiser les marqueurs
+0000307C  4EB9 000031DE             54      JSR INIT_MARKERS
+00003082                            55      
+00003082                            56      ; Lire le choix du joueur (5 chiffres)
+00003082  4EB9 00003188             57      JSR OVERFLOW
+00003088                            58      
+00003088                            59      ; Comparer le choix avec le code secret
+00003088  4EB9 000031D0             60      JSR COMP
+0000308E                            61      
+0000308E                            62      ; Verifier si le joueur a gagne (5 bien places)
+0000308E  BE3C 0005                 63      CMP.B #5,D7
+00003092  6700 0056                 64      BEQ FIN_JEU
+00003096                            65      
+00003096                            66      ; Preparer l'affichage des resultats
+00003096                            67      ; Convertir nombre de mal places en ASCII
+00003096  1004                      68      MOVE.B D4,D0
+00003098  0600 0030                 69      ADD.B #$30,D0
+0000309C  13C0 000033CE             70      MOVE.B D0,MAL_P
+000030A2                            71      
+000030A2                            72      ; Convertir nombre de bien places en ASCII
+000030A2  1007                      73      MOVE.B D7,D0
+000030A4  0600 0030                 74      ADD.B #$30,D0
+000030A8  13C0 000033D2             75      MOVE.B D0,BIEN_P
+000030AE                            76      
+000030AE                            77      ; Afficher les resultats
+000030AE  207C 000033D4             78      MOVE.L #MSG_INFO1,A0
+000030B4  4EB9 000032D6             79      JSR LECTURE
+000030BA  207C 000033D2             80      MOVE.L #BIEN_P,A0
+000030C0  4EB9 000032D6             81      JSR LECTURE
+000030C6  207C 000033EA             82      MOVE.L #MSG_INFO2,A0
+000030CC  4EB9 000032D6             83      JSR LECTURE
+000030D2  207C 000033CE             84      MOVE.L #MAL_P,A0
+000030D8  4EB9 000032D6             85      JSR LECTURE
+000030DE                            86      
+000030DE                            87      ; Incrementer le compteur de manches
+000030DE  5203                      88      ADD.B #1,D3
+000030E0                            89      
+000030E0                            90      ; Verifier si 10 tentatives sont epuisees
+000030E0  B63C 000B                 91      CMP.B #11,D3
+000030E4  6700 0004                 92      BEQ FIN_JEU
+000030E8                            93      
+000030E8                            94      ; Continuer avec une nouvelle manche
+000030E8  6092                      95      BRA MANCHE
+000030EA                            96  
+000030EA                            97  ;=== FIN DU JEU ===
+000030EA                            98      
+000030EA                            99  FIN_JEU:
+000030EA                           100      ; Verifier si victoire ou defaite
+000030EA  BE3C 0005                101      CMP.B #5,D7
+000030EE  6600 0012                102      BNE DEFAITE
+000030F2                           103      
+000030F2                           104      ; Cas victoire
+000030F2  207C 0000340D            105      MOVE.L #MSG_VICTOIRE,A0
+000030F8  4EB9 000032D6            106      JSR LECTURE
+000030FE  6000 0026                107      BRA FIN
+00003102                           108      
+00003102                           109  DEFAITE:
+00003102                           110      ; Cas defaite
+00003102  207C 00003435            111      MOVE.L #MSG_DEFAITE,A0
+00003108  4EB9 000032D6            112      JSR LECTURE
+0000310E                           113      
+0000310E                           114      ; Afficher le code secret
+0000310E  207C 0000344A            115      MOVE.L #MSG_AFF_CODE,A0
+00003114  4EB9 000032D6            116      JSR LECTURE
+0000311A  207C 000033BE            117      MOVE.L #CODE_SECRET,A0
+00003120  4EB9 000032D6            118      JSR LECTURE
+00003126                           119      
+00003126                           120  FIN:
+00003126                           121      ; Terminer le programme
+00003126  4EF9 000032D0            122      JMP FINPRG
+0000312C                           123  
+0000312C                           124  ;===============================================================================
+0000312C                           125  ; ROUTINES POUR LA GESTION DU JEU
+0000312C                           126  ;===============================================================================
+0000312C                           127  
+0000312C                           128  ;--- Initialiser le code secret aleatoire ---
+0000312C                           129  INIT_CODE:
+0000312C  4EB9 0000317A            130      JSR TIMER_SEED              ; Initialiser la graine avec l'horloge
+00003132  287C 000033BE            131      MOVE.L #CODE_SECRET,A4      ; Adresse du code secret
+00003138  143C 0000                132      MOVE.B #0,D2                ; Compteur de chiffres
+0000313C                           133     
+0000313C                           134  RAND_LOOP:
+0000313C  4EB9 0000315A            135      JSR INIT_RANDOM_SEED        ; Generer un chiffre aleatoire (0-9)
+00003142  0600 0030                136      ADD.B #$30,D0               ; Convertir en ASCII ('0'-'9')
+00003146  1980 2000                137      MOVE.B D0,0(A4,D2)          ; Stocker dans CODE_SECRET
+0000314A  5202                     138      ADD.B #1,D2                 ; Incrementer compteur
+0000314C  B43C 0005                139      CMP.B #5,D2                 ; 5 chiffres generes?
+00003150  66EA                     140      BNE RAND_LOOP
+00003152  19BC 0000 2000           141      MOVE.B #0,0(A4,D2)          ; Terminer avec 0
+00003158  4E75                     142      RTS
+0000315A                           143  
+0000315A                           144  ;--- Generateur de nombres aleatoires ---
+0000315A                           145  INIT_RANDOM_SEED:
+0000315A  2039 000033BA            146      MOVE.L SEED,D0              ; Charger la graine
+00003160  C0FC 0011                147      MULU #17,D0                 ; Multiplier par 17
+00003164  5600                     148      ADD.B #3,D0                 ; Ajouter 3
+00003166  80FC 000A                149      DIVU #10,D0                 ; Diviser par 10
+0000316A  4840                     150      SWAP D0                     ; Le reste est dans les 16 bits hauts
+0000316C  C0BC 000000FF            151      AND.L #$00FF,D0             ; Garder seulement 8 bits (0-9)
+00003172  23C0 000033BA            152      MOVE.L D0,SEED              ; Sauvegarder nouvelle graine
+00003178  4E75                     153      RTS
+0000317A                           154  
+0000317A                           155  ;--- Initialiser la graine avec l'horloge systeme ---
+0000317A                           156  TIMER_SEED:
+0000317A  4EB9 000032C8            157      JSR GET_TIME                ; Recuperer le temps systeme
+00003180  23C1 000033BA            158      MOVE.L D1,SEED              ; Utiliser comme graine
+00003186  4E75                     159      RTS
+00003188                           160  
+00003188                           161  ;--- Saisie du choix du joueur avec validation ---
+00003188                           162  OVERFLOW:
+00003188  1C3C 0000                163      MOVE.B #0,D6                ; Compteur de chiffres saisis
+0000318C  207C 0000337D            164      MOVE.L #STARTMSG,A0         ; Message de demande
+00003192  4EB9 000032D6            165      JSR LECTURE
+00003198  227C 00003370            166      MOVE.L #CHOIX,A1            ; Adresse ou stocker le choix
+0000319E                           167      
+0000319E                           168  SAISIE:
+0000319E  4EB9 000032B8            169      JSR SAISCAR                 ; Lire un caractere
+000031A4  B23C 000D                170      CMP.B #$0D,D1               ; Entree pressee?
+000031A8  6700 001A                171      BEQ FIN_SAISIE
+000031AC  B23C 0030                172      CMP.B #$30,D1               ; Caractere < '0'?
+000031B0  6DEC                     173      BLT SAISIE
+000031B2  B23C 0039                174      CMP.B #$39,D1               ; Caractere > '9'?
+000031B6  6EE6                     175      BGT SAISIE
+000031B8  BC3C 0005                176      CMP.B #5,D6                 ; Deja 5 chiffres?
+000031BC  6EE0                     177      BGT SAISIE
+000031BE  12C1                     178      MOVE.B D1,(A1)+             ; Stocker le chiffre
+000031C0  5206                     179      ADD.B #1,D6                 ; Incrementer compteur
+000031C2  60DA                     180      BRA SAISIE
+000031C4                           181      
+000031C4                           182  FIN_SAISIE:
+000031C4  BC3C 0005                183      CMP.B #5,D6                 ; Exactement 5 chiffres?
+000031C8  66BE                     184      BNE OVERFLOW                ; Sinon redemander
+000031CA  12BC 0000                185      MOVE.B #0,(A1)              ; Terminer avec 0
+000031CE  4E75                     186      RTS
+000031D0                           187  
+000031D0                           188  ;--- Comparer le choix avec le code secret ---
+000031D0                           189  COMP:
+000031D0  4EB9 00003200            190      JSR BIEN_PLACE              ; Compter les chiffres bien places
+000031D6  4EB9 0000324E            191      JSR MAL_PLACE               ; Compter les chiffres mal places
+000031DC  4E75                     192      RTS
+000031DE                           193  
+000031DE                           194  ;--- Reinitialiser les marqueurs ---
+000031DE                           195  INIT_MARKERS:
+000031DE  267C 000033C4            196      MOVE.L #PLACE_SECRET,A3
+000031E4  247C 000033C9            197      MOVE.L #PLACE_CHOISI,A2
+000031EA  123C 0000                198      MOVE.B #0,D1                ; Compteur
+000031EE                           199      
+000031EE                           200  MARKER_LOOP:
+000031EE  16FC 0000                201      MOVE.B #0,(A3)+             ; Mettre marqueur a 0
+000031F2  14FC 0000                202      MOVE.B #0,(A2)+             ; Mettre marqueur a 0
+000031F6  5201                     203      ADD.B #1,D1
+000031F8  B23C 0005                204      CMP.B #5,D1                 ; 5 positions?
+000031FC  66F0                     205      BNE MARKER_LOOP
+000031FE  4E75                     206      RTS
+00003200                           207  
+00003200                           208  ;--- Compter les chiffres bien places ---
+00003200                           209  ; Resultat dans D7
+00003200                           210  BIEN_PLACE:
+00003200  227C 00003370            211      MOVE.L #CHOIX,A1
+00003206  287C 000033BE            212      MOVE.L #CODE_SECRET,A4
+0000320C  267C 000033C4            213      MOVE.L #PLACE_SECRET,A3
+00003212  247C 000033C9            214      MOVE.L #PLACE_CHOISI,A2
+00003218  1E3C 0000                215      MOVE.B #0,D7                ; Compteur de bien places
+0000321C  1A3C 0000                216      MOVE.B #0,D5                ; Index de position
+00003220  123C 0000                217      MOVE.B #0,D1
+00003224  103C 0000                218      MOVE.B #0,D0
+00003228                           219  
+00003228                           220  BOUCLE_BIEN_PLACE:
+00003228  1031 5000                221      MOVE.B 0(A1,D5),D0          ; Chiffre du choix
+0000322C  1234 5000                222      MOVE.B 0(A4,D5),D1          ; Chiffre du code secret
+00003230  B200                     223      CMP.B D0,D1                 ; Sont-ils egaux?
+00003232  6600 0010                224      BNE SKIP
+00003236                           225      
+00003236                           226      ; Chiffre bien place trouve
+00003236  17BC 0001 5000           227      MOVE.B #1,0(A3,D5)          ; Marquer dans PLACE_SECRET
+0000323C  15BC 0001 5000           228      MOVE.B #1,0(A2,D5)          ; Marquer dans PLACE_CHOISI
+00003242  5207                     229      ADD.B #1,D7                 ; Incrementer compteur
+00003244                           230     
+00003244                           231  SKIP:
+00003244  5205                     232      ADD.B #1,D5                 ; Position suivante
+00003246  BA3C 0005                233      CMP.B #5,D5                 ; Toutes les positions?
+0000324A  66DC                     234      BNE BOUCLE_BIEN_PLACE
+0000324C  4E75                     235      RTS
+0000324E                           236  
+0000324E                           237  ;--- Compter les chiffres mal places ---
+0000324E                           238  ; Resultat dans D4
+0000324E                           239  MAL_PLACE:
+0000324E  227C 00003370            240      MOVE.L #CHOIX,A1
+00003254  287C 000033BE            241      MOVE.L #CODE_SECRET,A4
+0000325A  267C 000033C4            242      MOVE.L #PLACE_SECRET,A3
+00003260  247C 000033C9            243      MOVE.L #PLACE_CHOISI,A2
+00003266  143C 0000                244      MOVE.B #0,D2                ; Index choix
+0000326A  183C 0000                245      MOVE.B #0,D4                ; Compteur de mal places
+0000326E                           246  
+0000326E                           247  FIRST_LOOP:
+0000326E  1A3C 0000                248      MOVE.B #0,D5                ; Index code secret
+00003272  0C32 0000 2000           249      CMP.B #0,0(A2,D2)           ; Deja marque?
+00003278  6600 0034                250      BNE END_FIRST_LOOP          ; Oui, passer au suivant
+0000327C                           251      
+0000327C                           252  SECOND_LOOP:
+0000327C  0C33 0000 5000           253      CMP.B #0,0(A3,D5)           ; Position deja utilisee?
+00003282  6600 0022                254      BNE END_SECOND_LOOP
+00003286                           255      
+00003286  1031 2000                256      MOVE.B 0(A1,D2),D0          ; Chiffre du choix
+0000328A  1234 5000                257      MOVE.B 0(A4,D5),D1          ; Chiffre du code secret
+0000328E  B200                     258      CMP.B D0,D1                 ; Sont-ils egaux?
+00003290  6600 0014                259      BNE END_SECOND_LOOP
+00003294                           260      
+00003294                           261      ; Chiffre mal place trouve
+00003294  5204                     262      ADD.B #1,D4                 ; Incrementer compteur
+00003296  17BC 0001 5000           263      MOVE.B #1,0(A3,D5)          ; Marquer
+0000329C  15BC 0001 2000           264      MOVE.B #1,0(A2,D2)          ; Marquer
+000032A2  6000 000A                265      BRA END_FIRST_LOOP
+000032A6                           266      
+000032A6                           267  END_SECOND_LOOP:
+000032A6  5205                     268      ADD.B #1,D5
+000032A8  BA3C 0005                269      CMP.B #5,D5
+000032AC  66CE                     270      BNE SECOND_LOOP
+000032AE                           271      
+000032AE                           272  END_FIRST_LOOP:
+000032AE  5202                     273      ADD.B #1,D2
+000032B0  B43C 0005                274      CMP.B #5,D2
+000032B4  66B8                     275      BNE FIRST_LOOP
+000032B6  4E75                     276      RTS
+000032B8                           277  
+000032B8                           278  ;===============================================================================
+000032B8                           279  ; INCLUSION DES BIBLIOTHEQUES
+000032B8                           280  ;===============================================================================
+000032B8                           281      
+000032B8                           282      INCLUDE 'BIBLIO.X68'        ; Entrees/sorties textuelles
+000032B8                           283  ;===============================================================================
+000032B8                           284  ; BIBLIOTHEQUE BIBLIO.X68
+000032B8                           285  ;===============================================================================
+000032B8                           286  
+000032B8                           287  ;--- Appel systeme n5 : SAISCAR ---
+000032B8                           288  ; Fonction : Lit un caractere au clavier
+000032B8                           289  SAISCAR:
+000032B8  103C 0005                290      MOVE.B #5,D0
+000032BC  4E4F                     291      TRAP #15
+000032BE  4E75                     292      RTS
+000032C0                           293  
+000032C0                           294  ;--- Appel systeme n6 : AFFCAR ---
+000032C0                           295  ; Fonction : Affiche un caractere a lecran
+000032C0                           296  AFFCAR:
+000032C0  103C 0006                297      MOVE.B #6,D0
+000032C4  4E4F                     298      TRAP #15
+000032C6  4E75                     299      RTS
+000032C8                           300  
+000032C8                           301  ;--- Appel systeme n8 : GET_TIME ---
+000032C8                           302  ; Fonction : Recupere le nombre de centiemes de secondes depuis minuit
+000032C8                           303  
+000032C8                           304  GET_TIME:
+000032C8  103C 0008                305      MOVE.B #8,D0
+000032CC  4E4F                     306      TRAP #15
+000032CE  4E75                     307      RTS
+000032D0                           308  
+000032D0                           309  ;--- Appel systeme n°9 : FINPRG ---
+000032D0                           310  ; Fonction : Termine le programme
+000032D0                           311  
+000032D0                           312  FINPRG:
+000032D0  103C 0009                313      MOVE.B #9,D0
+000032D4  4E4F                     314      TRAP #15
+000032D6                           315  
+000032D6                           316  ;===============================================================================
+000032D6                           317  ; ROUTINES PERSONNALISEES
+000032D6                           318  ;===============================================================================
+000032D6                           319  
+000032D6                           320  ;--- LECTURE : Affiche une chaine de caracTeres ---
+000032D6                           321  
+000032D6                           322  LECTURE:
+000032D6  1210                     323      MOVE.B (A0),D1              ; Lire un caractere
+000032D8  5288                     324      ADD.L #$1,A0                ; Pointer sur le suivant
+000032DA  B23C 0000                325      CMP.B #$0,D1                ; Est-ce 0 (fin)?
+000032DE  6700 0008                326      BEQ FIN_LE                  ; Oui, terminer
+000032E2  4EB8 32C0                327      JSR AFFCAR                  ; Non, afficher le caractere
+000032E6  60EE                     328      BRA LECTURE                 ; Continuer
+000032E8                           329  FIN_LE:
+000032E8  4E75                     330      RTS
+000032EA                           331  
+000032EA                           332  SAISCHAINE:
+000032EA                           333  POUR2:
+000032EA  4EB8 32B8                334      JSR SAISCAR
+000032EE  10C1                     335      MOVE.B D1,(A0)+
+000032F0  B23C 000D                336      CMP.B #$0D,D1
+000032F4  6700 0004                337      BEQ FIN_POUR2
+000032F8  60F0                     338      BRA POUR2
+000032FA                           339  FIN_POUR2:
+000032FA  113C 0000                340      MOVE.B #0,-(A0) ;Pour retirer le retour à la ligne et finir la chaine par un \0
+000032FE  207C 00003304            341      MOVE.L #CHAINE,A0
+00003304= 14                       342  CHAINE: DC.B 20
+00003306  4E75                     343      RTS
+00003306  4E75                     344  -------------------- end include --------------------
+00003308                           345      INCLUDE 'BIBPERIPH.X68'     ; Gestion fenetre
+00003308                           346  RESOLUTION:
+00003308  303C 0021                347      MOVE #33,D0
+0000330C  4E4F                     348      TRAP #15
+0000330E  4E75                     349      RTS
+00003310                           350  GET_MOUSE:
+00003310  303C 003D                351      MOVE #61,D0
+00003314  4E4F                     352      TRAP #15
+00003316  4E75                     353      RTS
+00003318                           354      
+00003318                           355  -------------------- end include --------------------
+00003318                           356      INCLUDE 'BIBGRAPH.X68'      ; Fonctions graphiques
+00003318                           357  SET_PEN_COLOR:
+00003318  303C 0050                358      MOVE #80,D0
+0000331C  4E4F                     359      TRAP #15
+0000331E  4E75                     360      RTS
+00003320                           361  
+00003320                           362  SET_FILL_COLOR:
+00003320  303C 0051                363      MOVE #81,D0
+00003324  4E4F                     364      TRAP #15
+00003326  4E75                     365      RTS
+00003328                           366  
+00003328                           367  DRAW_PIX:
+00003328  303C 0052                368      MOVE #82,D0
+0000332C  4E4F                     369      TRAP #15
+0000332E  4E75                     370      RTS
+00003330                           371      
+00003330                           372  GET_PIX_COLOR:
+00003330  303C 0053                373      MOVE #83,D0
+00003334  4E4F                     374      TRAP #15
+00003336  4E75                     375      RTS
+00003338                           376      
+00003338                           377  DRAW_LINE:
+00003338  303C 0054                378      MOVE #84,D0
+0000333C  4E4F                     379      TRAP #15
+0000333E  4E75                     380      RTS
+00003340                           381   
+00003340                           382  DRAW_TO:
+00003340  303C 0055                383      MOVE #85,D0
+00003344  4E4F                     384      TRAP #15
+00003346  4E75                     385      RTS
+00003348                           386      
+00003348                           387  MOVE_TO:
+00003348  303C 0056                388      MOVE #86,D0
+0000334C  4E4F                     389      TRAP #15
+0000334E  4E75                     390      RTS
+00003350                           391   
+00003350                           392  DRAW_FILL_RECT:
+00003350  303C 0057                393      MOVE #87,D0
+00003354  4E4F                     394      TRAP #15
+00003356  4E75                     395      RTS
+00003358                           396      
+00003358                           397  DRAW_FILL_ELLIPSE:
+00003358  303C 0058                398      MOVE #88,D0
+0000335C  4E4F                     399      TRAP #15
+0000335E  4E75                     400      RTS
+00003360                           401      
+00003360                           402  POT_DE_PEINTURE:
+00003360  303C 0059                403      MOVE #89,D0
+00003364  4E4F                     404      TRAP #15
+00003366  4E75                     405      RTS
+00003368                           406      
+00003368                           407  DRAW_STRING:
+00003368  303C 005F                408      MOVE #95,D0
+0000336C  4E4F                     409      TRAP #15
+0000336E  4E75                     410      RTS
+00003370                           411  
+00003370                           412  -------------------- end include --------------------
+00003370                           413  
+00003370                           414  ;===============================================================================
+00003370                           415  ; DECLARATIONS DES VARIABLES
+00003370                           416  ;===============================================================================
+00003370                           417      
+00003370                           418  CHOIX: DS.B 6                   ; Choix du joueur (5 chiffres + 0)
+00003376                           419  
+00003376= 0A 0D 0A 0D 0A 0D 00     420  ESPACE_DEBUT: DC.B $0A,$0D,$0A,$0D,$0A,$0D,0  ; Sauts de ligne
+0000337D                           421  
+0000337D= 3D 3D 3D 20 56 65 ...    422  STARTMSG: DC.B '=== Veuillez choisir une composition de 5 chiffres === :',$0A,$0D,'>',0
+000033B9                           423  
+000033BA= 46753289                 424  SEED: DC.L $46753289            ; Graine pour generateur aleatoire
+000033BE                           425  
+000033BE                           426  CODE_SECRET: DS.B 6             ; Code secret (5 chiffres + 0)
+000033C4                           427  
+000033C4= 00 00 00 00 00           428  PLACE_SECRET: DC.B 0,0,0,0,0    ; Marqueurs pour code secret
+000033C9                           429  
+000033C9= 00 00 00 00 00           430  PLACE_CHOISI: DC.B 0,0,0,0,0    ; Marqueurs pour code choisi
+000033CE                           431  
+000033CE= 00 0D 0A 00              432  MAL_P: DC.B 0,$0D,$0A,0         ; Stockage nombre mal places (ASCII)
+000033D2                           433  
+000033D2= 00 00                    434  BIEN_P: DC.B 0,0                ; Stockage nombre bien places (ASCII)
+000033D4                           435  
+000033D4= 45 4C 45 4D 45 4E ...    436  MSG_INFO1: DC.B 'ELEMENTS BIEN PLACES ',0 
+000033EA                           437  
+000033EA= 20 2C 45 4C 45 4D ...    438  MSG_INFO2: DC.B ' ,ELEMENTS JUSTES MAIS MAL PLACES ',0
+0000340D                           439  
+0000340D= 42 52 41 56 4F 20 ...    440  MSG_VICTOIRE: DC.B 'BRAVO TU AS TROUVE LE CODE SECRET !! :)',0
+00003435                           441  
+00003435= 54 55 20 41 53 20 ...    442  MSG_DEFAITE: DC.B 'TU AS PERDU HAHAHAHA',0
+0000344A                           443  
+0000344A= 4C 45 20 43 4F 44 ...    444  MSG_AFF_CODE: DC.B 'LE CODE SECRET EST ',0
+0000345E                           445  
+0000345E= 4D 20 41 20 53 20 ...    446  TITRE: DC.B 'M A S T E R M I N D',0
+00003472                           447  
+00003472= 43 6F 64 65 20 73 ...    448  MSG_CODE_SECRET_MASQUE: DC.B 'Code secret : [ ? ][ ? ][ ? ][ ? ][ ? ]',$0A,$0D,$0A,$0D,0
+0000349E                           449  
+0000349E                           450      END $3000
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+AFFCAR              32C0
+BIEN_P              33D2
+BIEN_PLACE          3200
+BOUCLE_BIEN_PLACE   3228
+CHAINE              3304
+CHOIX               3370
+CODE_SECRET         33BE
+COMP                31D0
+DEFAITE             3102
+DRAW_FILL_ELLIPSE   3358
+DRAW_FILL_RECT      3350
+DRAW_LINE           3338
+DRAW_PIX            3328
+DRAW_STRING         3368
+DRAW_TO             3340
+END_FIRST_LOOP      32AE
+END_SECOND_LOOP     32A6
+ESPACE_DEBUT        3376
+FIN                 3126
+FINPRG              32D0
+FIN_JEU             30EA
+FIN_LE              32E8
+FIN_POUR2           32FA
+FIN_SAISIE          31C4
+FIRST_LOOP          326E
+GET_MOUSE           3310
+GET_PIX_COLOR       3330
+GET_TIME            32C8
+INIT_CODE           312C
+INIT_MARKERS        31DE
+INIT_RANDOM_SEED    315A
+LECTURE             32D6
+MAL_P               33CE
+MAL_PLACE           324E
+MANCHE              307C
+MARKER_LOOP         31EE
+MOVE_TO             3348
+MSG_AFF_CODE        344A
+MSG_CODE_SECRET_MASQUE  3472
+MSG_DEFAITE         3435
+MSG_INFO1           33D4
+MSG_INFO2           33EA
+MSG_VICTOIRE        340D
+OVERFLOW            3188
+PLACE_CHOISI        33C9
+PLACE_SECRET        33C4
+POT_DE_PEINTURE     3360
+POUR2               32EA
+RAND_LOOP           313C
+RESOLUTION          3308
+SAISCAR             32B8
+SAISCHAINE          32EA
+SAISIE              319E
+SECOND_LOOP         327C
+SEED                33BA
+SET_FILL_COLOR      3320
+SET_PEN_COLOR       3318
+SKIP                3244
+STARTMSG            337D
+TIMER_SEED          317A
+TITRE               345E
