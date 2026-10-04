@@ -1,40 +1,46 @@
 # Mastermind
-Mastermind game made in Motorola 68k Assembly 
-# Mastermind en Assembleur 68k
 
-Un jeu de Mastermind classique développé entièrement en assembleur Motorola 68000. Le jeu se déroule dans une interface graphique personnalisée et gère la logique de comparaison de combinaisons secrètes.
+Mastermind game made in Motorola 68k Assembly
 
-## Aperçu du jeu
+# Mastermind in 68k Assembly
+
+A classic Mastermind game developed entirely in Motorola 68000 Assembly. The game runs in a custom graphical interface and handles the logic for comparing secret combinations.
+
+## Game Overview
 
 <img width="1118" height="904" alt="{64B65AF1-F526-4D9D-A5EE-7C9DE7F59D51}" src="https://github.com/user-attachments/assets/138b611c-2b3f-43dc-9f1e-65f194146804" />
 
+## How to Run the Project
 
-## Comment lancer le projet
+This project requires the **EASy68K** emulator to be assembled and executed.
 
-Ce projet nécessite l'émulateur **EASy68K** pour être assemblé et exécuté.
+1. **Download and install** [EASy68K](http://www.easy68k.com/).
+2. **Open the main source file** in the EASy68K editor.
+3. **Assemble the code** by pressing `F9` (Project > Assemble).
+4. **Launch the simulator** by pressing `F10` (Project > Execute).
+5. Press the **Play** button in Sim68K to start the game. A 900x700 pixel window with a green background will open to display the game.
 
-1. **Téléchargez et installez** [EASy68K](http://www.easy68k.com/).
-2. **Ouvrez le fichier source** principal dans l'éditeur EASy68K.
-3. **Assemblez le code** en appuyant sur `F9` (Project > Assemble).
-4. **Lancez le simulateur** Sim68K en appuyant sur `F10` (Project > Execute).
-5. Appuyez sur le bouton **Play** dans Sim68K pour démarrer la partie. Une fenêtre de 900x700 pixels avec un fond vert s'ouvrira pour afficher le jeu.
+## Code Logic
 
-##  Logique du Code
+The game uses a modular architecture separating graphical calls from the game logic.
 
-Le jeu repose sur une architecture modulaire séparant les appels graphiques et la logique de jeu.
+### Secret Code Random Generation
 
-### Génération aléatoire du code secret
-Le code secret n'est pas fixe. À chaque nouvelle partie, le programme génère une nouvelle combinaison :
-* **Graine temporelle :** La routine `TIMER_SEED` fait appel au système (Trap #15) pour récupérer l'heure de l'horloge système et l'utiliser comme graine de départ.
-* **Calcul aléatoire :** La routine `INIT_RANDOM_SEED` utilise ensuite cette graine pour effectuer un calcul mathématique (multiplication, addition, et division par 10) afin d'isoler le reste et d'obtenir un chiffre aléatoire compris entre 0 et 9.
+The secret code is not fixed. Each new game generates a new combination:
 
-### Algorithme de vérification (Bien placés / Mal placés)
-Pour comparer la tentative du joueur au code secret, le programme utilise deux passes et des marqueurs (`PLACE_SECRET` et `PLACE_CHOISI`) pour éviter les doublons :
-1. **Les éléments bien placés :** La routine `BIEN_PLACE` compare les indices un à un[cite: 3]. Si une correspondance exacte est trouvée, la position est "marquée" à la fois dans le tableau secret et dans le tableau du joueur par un "1".
-2. **Les éléments mal placés :** La routine `MAL_PLACE` croise les chiffres restants en ignorant systématiquement ceux qui ont été préalablement marqués à l'étape précédente.
+* **Time-based seed:** The `TIMER_SEED` routine calls the system (Trap #15) to retrieve the system clock time and use it as the initial seed.
+* **Random calculation:** The `INIT_RANDOM_SEED` routine then uses this seed to perform a mathematical calculation (multiplication, addition, and division by 10) to isolate the remainder and obtain a random digit between 0 and 9.
 
-## Règles du jeu
-* L'ordinateur génère un code secret de 5 chiffres (de 0 à 9).
-* Vous avez 10 tentatives pour le deviner[cite: 3].
-* Saisissez une combinaison de 5 chiffres et appuyez sur Entrée[cite: 3]. La saisie est sécurisée et n'accepte que les caractères numériques.
-* Le jeu vous indique combien de chiffres sont parfaitement placés, et combien sont corrects mais mal positionnés.
+### Checking Algorithm (Correct Position / Wrong Position)
+
+To compare the player's guess with the secret code, the program uses two passes and markers (`PLACE_SECRET` and `PLACE_CHOISI`) to prevent duplicates:
+
+1. **Correctly placed elements:** The `BIEN_PLACE` routine compares the indices one by one[cite: 3]. If an exact match is found, the position is "marked" in both the secret array and the player's array with a "1".
+2. **Incorrectly placed elements:** The `MAL_PLACE` routine compares the remaining digits while systematically ignoring those that were previously marked during the previous step.
+
+## Game Rules
+
+* The computer generates a secret code consisting of 5 digits (from 0 to 9).
+* You have 10 attempts to guess it[cite: 3].
+* Enter a combination of 5 digits and press Enter[cite: 3]. Input is validated and only numeric characters are accepted.
+* The game tells you how many digits are in the correct position and how many are correct but in the wrong position.
