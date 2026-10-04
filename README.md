@@ -41,6 +41,6 @@ To compare the player's guess with the secret code, the program uses two passes 
 ## Game Rules
 
 * The computer generates a secret code consisting of 5 digits (from 0 to 9).
-* You have 10 attempts to guess it[cite: 3].
-* Enter a combination of 5 digits and press Enter[cite: 3]. Input is validated and only numeric characters are accepted.
+* You have 10 attempts to guess it.
+* Enter a combination of 5 digits and press Enter. Input is validated and only numeric characters are accepted.
 * The game tells you how many digits are in the correct position and how many are correct but in the wrong position.
